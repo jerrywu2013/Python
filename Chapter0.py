@@ -1,6 +1,6 @@
 #Chapter0
 "$(FULL_CURRENT_PATH)"
-#中文
+
 print (3, -1, 3.14159, -2.8)
 
 
@@ -16,9 +16,6 @@ print (float(3), float(-1))
 
 
 print (3.1415926535897932384626433832795028841971)
-
-
-
 print (1.4142135623730950488016887242096980785696)
 
 # arithmetic operators
