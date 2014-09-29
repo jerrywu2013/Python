@@ -1,5 +1,2 @@
-####if "$(FULL_CURRENT_PATH)"
-x = "False"
-if x:
-    print("x11111 ert")
+print ("我的第一隻Python程式")
 	
