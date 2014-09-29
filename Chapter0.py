@@ -1,5 +1,5 @@
 #Chapter0
-
+"$(FULL_CURRENT_PATH)"
 
 print (3, -1, 3.14159, -2.8)
 
@@ -114,14 +114,101 @@ print (temp_Celsius)
 
 #Test!
 
+#Data Type
+#Font
+"Hard Times"[5]
+"giraffe"[0]
 
+#Object Reference
+#Variable
+x = "blue"
+y = "green"
+z = x
 
+print (x, y, z)
+z = y 
+print (x, y, z)
+x = z 
+print (x, y, z)
 
+route = 866
+print (route, type(route))
 
+route = "North"
+print (route, type(route))
 
+#Collection Data Type
 
+"Denmark","Finland","Norway","Sweden"
+"one",
+x = [1,4,9,16,25,36,49]
+type(x)
+x[1]
+x[0]
 
+y = ["Denmark","Finland","Norway","Sweden"]
+z=y[0]
+type(z)
 
+#Len()
+len("one")
+len("one",)
+len(("one",))
+len([3,5,1,2,"pause",5])
+len("automatically")
+
+#append()
+x = ["zebra",49,-879,"aardvark",200]
+x.append("more")
+print (x)
+type(x)
+#list.append()
+list.append(x, "extra")
+print (x)
+type(x)
+
+#Switch data
+x[1] = "kk"
+x
+
+#Explorer data
+x[0:3]
+
+##Logic 
+a = ["R", 3, None]
+b = ["R", 3, None]
+a is b
+b = a
+a is b
+
+a = "something"
+b = None
+a is not None
+b is not None
+a is not None, b is not None
+
+#<, <=, ==, !=, >=, >
+a = 2
+b = 6
+a == b
+a <= b, a != b, a >= b, a > b
+
+a = "many paths"
+b = "many paths"
+a is b
+a == b
+
+a = 9
+0 <= a <= 10
+
+"3" > 4
+3 > 4
+int("3") > 4
+
+##Membership
+p = (4, "frog", 9, -33, 9, 2)
+2 in p
+"dog" not in p
 
 
 
