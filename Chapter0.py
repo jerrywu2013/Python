@@ -1,6 +1,6 @@
 #Chapter0
 "$(FULL_CURRENT_PATH)"
-
+#中文
 print (3, -1, 3.14159, -2.8)
 
 
