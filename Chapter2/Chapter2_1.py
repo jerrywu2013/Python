@@ -123,7 +123,7 @@ treatises = ["A","C","D"]
 "-<>-".join(treatises)
 "".join(treatises)
 
-##x.capitalize()
+##x.capitalize() #Return capital letter
 x = "work"
 print(x)
 x.capitalize()
@@ -198,7 +198,7 @@ x.isdigit()
 x1.isdigit()
 x2.isdigit()
 
-#x.isidentifier() 
+#x.isidentifier()  #Check keywords
 x = "if" 
 x1 = "h appy"
 x2 = "h_appy"
@@ -206,7 +206,7 @@ x.isidentifier()
 x1.isidentifier()
 x2.isidentifier()
 
-#x.islower()
+#x.islower() #Return small letter
 x1 = "Happy"
 x2 = "happy"
 x1.islower()
