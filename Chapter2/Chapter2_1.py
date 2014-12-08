@@ -162,9 +162,9 @@ xx="a\ta"
 ##x.find() 
 #index
 x = "This is a book."
-x.find("x")
+x.find("T")
 #x.index()
-x.index("x")
+x.index("T")
 
 #x.isalnum() #Check number or character in vector
 x = "66+88"
