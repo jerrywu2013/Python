@@ -136,7 +136,6 @@ print(x.center(56, "="))
 x.center(15,"=")
 
 ##x.count()
-#Index count
 x = "This is a book."
 print(x)
 print(x.count("i"))
@@ -151,8 +150,6 @@ x.endswith(".")
 x.endswith("i")
 
 ##x.expandtabs()
-#The method expandtabs() returns a copy of the string in which tab characters ie.
-# '\t' have been expanded using spaces, optionally using the given tabsize .
 x = "b\t\t\tb"
 print(x)
 print(x.expandtabs())
@@ -163,7 +160,7 @@ print(x.expandtabs(4))
 xx="a\ta"
 
 ##x.find() 
-#Find index
+#index
 x = "This is a book."
 x.find("x")
 #x.index()
@@ -209,8 +206,7 @@ x.isidentifier()
 x1.isidentifier()
 x2.isidentifier()
 
-#x.islower() #Return small letter.  
-#different x.capitalize()
+#x.islower() #Return small letter
 x1 = "Happy"
 x2 = "happy"
 x1.islower()
