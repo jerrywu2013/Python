@@ -8,7 +8,7 @@ def get_int(msg, minimum, default):
             if not line and default is not None:
                 return default
             i = int(line)
-            if i < minimum:
+            if i < minimum:  #1,1,-1000000
                 print("must be >=", minimum)
             else:
                 return i
