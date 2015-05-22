@@ -1,6 +1,8 @@
 Python tutorial in ubuntu
 ==========
 ####Installation and quick start
+Win: http://continuum.io/downloads#py34
+
 ```
 sudo apt-get install python3-all
 whereis python3
