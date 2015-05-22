@@ -2,6 +2,8 @@ Python tutorial in ubuntu
 ==========
 ####Installation and quick start
 Win: http://continuum.io/downloads#py34
+####How do I install additional packages into Anaconda?
+conda install pymysql
 
 ```
 sudo apt-get install python3-all
