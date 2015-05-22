@@ -4,6 +4,7 @@ Python tutorial in ubuntu
 Win: http://continuum.io/downloads#py34
 ####How do I install additional packages into Anaconda?
 conda install pymysql
+binstar search -t conda psycopg2
 
 ```
 sudo apt-get install python3-all
