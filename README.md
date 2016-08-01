@@ -20,5 +20,7 @@ apt-get -y install python-pip
 pip install "ipython[notebook]"
 pip install --upgrade ipython[notebook]
 
+
+goog people
 ```
 
