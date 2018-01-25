@@ -22,3 +22,6 @@ pip install --upgrade ipython[notebook]
 
 ```
 
+#### Reference
+https://iampennywu.gitbooks.io/introducing-python/content/
+https://github.com/HuskyHsu/Introducing-Python
