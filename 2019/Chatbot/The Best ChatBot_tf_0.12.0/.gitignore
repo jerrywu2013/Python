@@ -1,0 +1,9 @@
+.*swp
+__pycache__
+*.npy
+.ipynb_checkpoints
+checkpoint
+ckpt/*/*.*
+ignore/
+*.pkl
+*.tar.gz

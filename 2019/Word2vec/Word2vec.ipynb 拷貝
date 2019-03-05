@@ -1,0 +1,416 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from __future__ import absolute_import  \n",
+    "from __future__ import division  \n",
+    "from __future__ import print_function  \n",
+    "  \n",
+    "import collections  \n",
+    "import math  \n",
+    "import os  \n",
+    "import random  \n",
+    "  \n",
+    "import numpy as np  \n",
+    "from six.moves import urllib  \n",
+    "from six.moves import xrange  # pylint: disable=redefined-builtin  \n",
+    "import tensorflow as tf "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Data size 671\n"
+     ]
+    }
+   ],
+   "source": [
+    "#Step 1: 讀取資料轉為String \n",
+    "def read_data(filename):  \n",
+    "    with open(filename, 'r', encoding='utf-8') as f:  \n",
+    "        data = tf.compat.as_str(f.read()).split()\n",
+    "        return data  \n",
+    "\n",
+    "vocabulary = read_data('./question_jieba.txt')  \n",
+    "print('Data size', len(vocabulary))  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "常見的5個詞 (+UNK)： [['UNK', 201], ('你', 70), ('嗎', 37), ('我', 36), ('是', 17)]\n",
+      "樣本資料： [5, 2, 90, 91, 30, 5, 2, 4, 31, 5] ['你好', '嗎', '現在', '幾點', '早上好', '你好', '嗎', '是', '啊', '你好']\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Step 2: 替換字典中的罕見單詞，像是姓名等等，改為UNK(unknown)\n",
+    "vocabulary_size = 100 #不能大於次數分配後的數字  \n",
+    "def build_dataset(words, n_words):  \n",
+    "  count = [['UNK', -1]] #建立一個以['UNK', -1]為首的List\n",
+    "  count.extend(collections.Counter(words).most_common(n_words - 1)) #計算文字出現字數，並取出重複較多的。\n",
+    "  dictionary = dict()  #建立空字典\n",
+    "  for word, _ in count:  \n",
+    "    dictionary[word] = len(dictionary)  #count內容轉為字典放入dictionary\n",
+    "  data = list() \n",
+    "  unk_count = 0  #建立data List取得UNK空的數量\n",
+    "  for word in words:  \n",
+    "    if word in dictionary:  \n",
+    "      index = dictionary[word]  \n",
+    "    else:  \n",
+    "      index = 0  # dictionary['UNK']  \n",
+    "      unk_count += 1  \n",
+    "    data.append(index)  \n",
+    "  count[0][1] = unk_count  \n",
+    "  reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys())) #排序一下字典\n",
+    "  return data, count, dictionary, reversed_dictionary  #回傳UNK的空值、原始List、字典、排序後的字典\n",
+    "  \n",
+    "data, count, dictionary, reverse_dictionary = build_dataset(vocabulary,  \n",
+    "                                                            vocabulary_size)  \n",
+    "#del vocabulary  #降低記憶體負擔\n",
+    "print('常見的5個詞 (+UNK)：', count[:5])  \n",
+    "print('樣本資料：', data[:10], [reverse_dictionary[i] for i in data[:10]])  \n",
+    "  \n",
+    "data_index = 0 "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "2 嗎 -> 90 現在\n",
+      "2 嗎 -> 5 你好\n",
+      "90 現在 -> 91 幾點\n",
+      "90 現在 -> 2 嗎\n",
+      "91 幾點 -> 90 現在\n",
+      "91 幾點 -> 30 早上好\n",
+      "30 早上好 -> 91 幾點\n",
+      "30 早上好 -> 5 你好\n",
+      "5 你好 -> 2 嗎\n",
+      "5 你好 -> 30 早上好\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Step 3: 產生具備skip-gram model訓練資料  \n",
+    "def generate_batch(batch_size, num_skips, skip_window):  \n",
+    "  global data_index  \n",
+    "  assert batch_size % num_skips == 0  #batch_size % num_skips = 0 必須為真，否則無法Skip\n",
+    "  assert num_skips <= 2 * skip_window   #num_skips <= 2 * skip_window  必須為真，否則無法Skip\n",
+    "  batch = np.ndarray(shape=(batch_size), dtype=np.int32) #透過ndarray建立多維陣列batch\n",
+    "  labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)  #透過ndarray建立多維陣列labels，存預測值\n",
+    "  span = 2 * skip_window + 1  # [ skip_window target skip_window ]  \n",
+    "  buffer = collections.deque(maxlen=span) #建立可以」透過double-ended queue可快速取出兩邊的資料的空buffer\n",
+    "  if data_index + span > len(data): #當data_index＋跳躍window，大於UNK空值的長度，建立一個buffer\n",
+    "    data_index = 0  \n",
+    "  buffer.extend(data[data_index:data_index + span]) \n",
+    "  data_index += span  \n",
+    "  for i in range(batch_size // num_skips):  #去掉小數後的batch_size // num_skips\n",
+    "    target = skip_window  # 跨越的寬度等於target\n",
+    "    targets_to_avoid = [skip_window] #要跳過的目標  \n",
+    "    for j in range(num_skips):  #透過For建立要跳過的各類位置\n",
+    "      while target in targets_to_avoid:\n",
+    "        target = random.randint(0, span - 1)  #隨機產生target\n",
+    "      targets_to_avoid.append(target)  \n",
+    "      batch[i * num_skips + j] = buffer[skip_window]  \n",
+    "      labels[i * num_skips + j, 0] = buffer[target]  \n",
+    "    if data_index == len(data):\n",
+    "      for word in data[:span]:\n",
+    "        buffer.append(word)\n",
+    "      data_index = span  \n",
+    "    else:  \n",
+    "      buffer.append(data[data_index])  \n",
+    "      data_index += 1  \n",
+    "  #避免在最後面跳過單詞， data_index可以做一些回朔的動作\n",
+    "  data_index = (data_index + len(data) - span) % len(data)  \n",
+    "  return batch, labels  \n",
+    "  \n",
+    "#Example，詳見簡報\n",
+    "batch, labels = generate_batch(batch_size=10, num_skips=2, skip_window=1)  \n",
+    "for i in range(10): #依據batch_size來觀察他跳躍的文字\n",
+    "    print(batch[i], reverse_dictionary[batch[i]],  \n",
+    "        '->', labels[i, 0], reverse_dictionary[labels[i, 0]])  \n",
+    "  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "WARNING:tensorflow:From <ipython-input-5-be95a695b1bf>:50: calling reduce_sum (from tensorflow.python.ops.math_ops) with keep_dims is deprecated and will be removed in a future version.\n",
+      "Instructions for updating:\n",
+      "keep_dims is deprecated, use keepdims instead\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Step 4: 訓練skip-gram model.  \n",
+    "  \n",
+    "batch_size = 128  \n",
+    "embedding_size = 128  # embedding vector的維度  \n",
+    "skip_window = 1       # 跨越的寬度 \n",
+    "num_skips = 2         # 不能小於 batch_size\n",
+    "  \n",
+    "#建立隨機驗證集進行抽樣\n",
+    "valid_size = 16     # 評估單詞的量， valid_examples的數量\n",
+    "valid_window = 100  # 建立的範圍1~100\n",
+    "valid_examples = np.random.choice(valid_window, valid_size, replace=False)  \n",
+    "num_sampled = 64    # 在nce_loss抽樣的數量  \n",
+    "  \n",
+    "#詳見簡報\n",
+    "graph = tf.Graph()  \n",
+    "  \n",
+    "with graph.as_default():  \n",
+    "  \n",
+    "  #資料輸入 \n",
+    "  train_inputs = tf.placeholder(tf.int32, shape=[batch_size]) #透過placeholder儲存訓練資料\n",
+    "  train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])  \n",
+    "  valid_dataset = tf.constant(valid_examples, dtype=tf.int32) #透過constant建立tensor\n",
+    "  \n",
+    "  # 運作CPU\n",
+    "  with tf.device('/cpu:0'):  \n",
+    "    embeddings = tf.Variable(  #初始化vocabulary_size、embedding_size\n",
+    "        tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))  \n",
+    "    embed = tf.nn.embedding_lookup(embeddings, train_inputs) #按照train_inputs的index回到embeddings，建立對應關係\n",
+    "  \n",
+    "    #建構NCE loss，詳見簡報 \n",
+    "    nce_weights = tf.Variable(  \n",
+    "        tf.truncated_normal([vocabulary_size, embedding_size],  #產生常態分佈\n",
+    "                            stddev=1.0 / math.sqrt(embedding_size)))  \n",
+    "    nce_biases = tf.Variable(tf.zeros([vocabulary_size]))  \n",
+    "  \n",
+    "  # 計算每一個batch的平均NCE Loss \n",
+    "  # tf.nce_loss可以自動產生負樣本，做Negative Sampling\n",
+    "  loss = tf.reduce_mean(  \n",
+    "      tf.nn.nce_loss(weights=nce_weights,  \n",
+    "                     biases=nce_biases,  \n",
+    "                     labels=train_labels,  \n",
+    "                     inputs=embed,  \n",
+    "                     num_sampled=num_sampled,  \n",
+    "                     num_classes=vocabulary_size))  \n",
+    "  \n",
+    "  # 設定優化器SGD隨機梯度下降，與learning rate為1.0\n",
+    "  optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)  \n",
+    "  \n",
+    "  # 計算所有all embeddings與batch的餘弦相似度\n",
+    "  norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))  \n",
+    "  normalized_embeddings = embeddings / norm  \n",
+    "  valid_embeddings = tf.nn.embedding_lookup(  \n",
+    "      normalized_embeddings, valid_dataset)  \n",
+    "  similarity = tf.matmul(  \n",
+    "      valid_embeddings, normalized_embeddings, transpose_b=True)  \n",
+    "  \n",
+    "  #初始化所有變數 \n",
+    "  init = tf.global_variables_initializer() "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Initialized\n",
+      "Average loss at step  0 :  61.2334098815918\n",
+      "Nearest to 從: 慢, 好, 去, 機器, 我, 到, 介紹, 蛋糕,\n",
+      "Nearest to 知道: 晦澀, 甚麼, 我覺, 好, 些, 呢, 會揮, 人,\n",
+      "Nearest to 都: 東西, 想, 誰, 呢, 晦澀, 灰黑, 那, 很,\n",
+      "Nearest to 也: 於, 灰黑, 呢, 想, 好, 晦澀, 幾歲, 在,\n",
+      "Nearest to 有: 叫, 那, 看, 雜優, 嗨, 上, 對, UNK,\n",
+      "Nearest to 最近: 我, 什麼, 呢, 幫, 對, 慢, 於, 書,\n",
+      "Nearest to 呢: 嗎, 最近, 都, 怎麼, 也, 知道, 走路, 你,\n",
+      "Nearest to 些: 說, 嗨, 了, 來, 關機, 幹, 到, 甚麼,\n",
+      "Nearest to UNK: 啊, 齣, 書, 電影, 到, 慢, 諱, 為,\n",
+      "Nearest to 人: 晚安, 不是, 齣, 其他, 了解, 看, 吃, 蛋糕,\n",
+      "Nearest to 灰黑: 是, 也, 介紹, 都, 帶, 不是, 幾點, 啊,\n",
+      "Nearest to 關機: 些, 化肥, 早上好, 走路, 為, 慢, 幹, 不,\n",
+      "Nearest to 好玩: 怎麼, 最, 幾點, 今天, 你好, 於, 東西, 哪裡,\n",
+      "Nearest to 大便: 哪裡, 會, 於, 蛋糕, 厲害, 其他, 謊言, 雜,\n",
+      "Nearest to 問題: 我覺, 謊言, 機器, 早上好, 雜, 晦澀, 喜歡, 好玩,\n",
+      "Nearest to 吃: 好吃, 厲害, 一個, 嗨, 人, 我覺, 如何, 什麼,\n",
+      "Average loss at step  2000 :  3.4345431542396545\n",
+      "Average loss at step  4000 :  3.2750648230314257\n",
+      "Average loss at step  6000 :  3.2630926078557967\n",
+      "Average loss at step  8000 :  3.257619031071663\n",
+      "Average loss at step  10000 :  3.253304216861725\n",
+      "Nearest to 從: 你好, 喔, 要, 去, 蛋糕, 都, UNK, 慢,\n",
+      "Nearest to 知道: 晦澀, 你, 呢, UNK, 有, 幾歲, 甚麼, 是,\n",
+      "Nearest to 都: 東西, 誰, 想, 很, 呢, 那, 灰黑, 諱,\n",
+      "Nearest to 也: 灰黑, UNK, 幾歲, 於, 為, 在, 嗎, 想,\n",
+      "Nearest to 有: 叫, 那, 看, 吃, 喜歡, 知道, 上, 其他,\n",
+      "Nearest to 最近: 幫, 你好, 呢, 我, 對, 於, 慢, 諱,\n",
+      "Nearest to 呢: 嗎, 使用, 什麼, 知道, 都, 是, 那, 怎麼,\n",
+      "Nearest to 些: 說, 復, 嗨, 了, 來, 新聞, 甚麼, 到,\n",
+      "Nearest to UNK: 機器, 幫, 沒, 走路, 問題, 誰, 甚麼, 扁,\n",
+      "Nearest to 人: 晚安, 不是, 了解, 蛋糕, 齣, 其他, 好吃, 看,\n",
+      "Nearest to 灰黑: 也, 是, 都, 帶, 介紹, 幾點, 去, 其他,\n",
+      "Nearest to 關機: 幹, 化肥, 沒, 不, 了, 些, UNK, 嗎,\n",
+      "Nearest to 好玩: 東西, 最, 幾點, 怎麼, 幫, 問題, 謊言, 復,\n",
+      "Nearest to 大便: UNK, 會, 謊言, 蛋糕, 哪裡, 雜, 會揮, 於,\n",
+      "Nearest to 問題: 謊言, UNK, 我覺, 雜, 是, 喜歡, 走路, 早上好,\n",
+      "Nearest to 吃: 好吃, 有, 一個, 上, 厲害, 帶, 了, UNK,\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Step 5: 開始訓練 \n",
+    "num_steps = 10001\n",
+    "\n",
+    "# 啟動 Session\n",
+    "with tf.Session(graph=graph) as session:  \n",
+    "  # 初始化\n",
+    "  init.run()  \n",
+    "  print('Initialized')  \n",
+    "  \n",
+    "  average_loss = 0  \n",
+    "  for step in xrange(num_steps):  \n",
+    "    batch_inputs, batch_labels = generate_batch(  \n",
+    "        batch_size, num_skips, skip_window)  \n",
+    "    feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}  \n",
+    "  \n",
+    "    # 透過優化器來評估每一個階段 \n",
+    "    _, loss_val = session.run([optimizer, loss], feed_dict=feed_dict)  \n",
+    "    average_loss += loss_val  \n",
+    "  \n",
+    "    if step % 2000 == 0:  \n",
+    "      if step > 0:  \n",
+    "        average_loss /= 2000  \n",
+    "      # 每兩千個Batches的平均Loss  \n",
+    "      print('Average loss at step ', step, ': ', average_loss)  \n",
+    "      average_loss = 0  \n",
+    "  \n",
+    "    # 如果設定每500步計算一次，則降低20%速度\n",
+    "    if step % 10000 == 0:  \n",
+    "      sim = similarity.eval()  \n",
+    "      for i in xrange(valid_size):  \n",
+    "        valid_word = reverse_dictionary[valid_examples[i]]  \n",
+    "        top_k = 8  # 近鄰的個數\n",
+    "        nearest = (-sim[i, :]).argsort()[1:top_k + 1]  \n",
+    "        log_str = 'Nearest to %s:' % valid_word  \n",
+    "        for k in xrange(top_k):  \n",
+    "          close_word = reverse_dictionary[nearest[k]]  \n",
+    "          log_str = '%s %s,' % (log_str, close_word)  \n",
+    "        print(log_str)  \n",
+    "  final_embeddings = normalized_embeddings.eval()  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):\n",
+    "#font_ch = mpl.font_manager.FontProperties(fname=‘/System/Library/Fonts/PingFang.ttc')\n",
+    "  plt.rcParams[\"font.family\"] = 'Microsoft JhengHei'\n",
+    "  assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'  \n",
+    "  plt.figure(figsize=(18, 18))  # in inches  \n",
+    "  for i, label in enumerate(labels):\n",
+    "    x, y = low_dim_embs[i, :]\n",
+    "    plt.scatter(x, y)  \n",
+    "    plt.annotate(label,  \n",
+    "                 xy=(x, y),  \n",
+    "                 xytext=(5, 2),  \n",
+    "                 textcoords='offset points',  \n",
+    "                 ha='right',  \n",
+    "                 va='bottom')  \n",
+    "  \n",
+    "  plt.savefig(filename)  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/site-packages/matplotlib/font_manager.py:1328: UserWarning: findfont: Font family ['Microsoft JhengHei'] not found. Falling back to DejaVu Sans\n",
+      "  (prop.get_family(), self.defaultFamily[fontext]))\n"
+     ]
+    }
+   ],
+   "source": [
+    "try:  \n",
+    "  # pylint: disable=g-import-not-at-top  \n",
+    "  from sklearn.manifold import TSNE  \n",
+    "  import matplotlib.pyplot as plt  \n",
+    "  \n",
+    "  tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)\n",
+    "  #TSNE降維\n",
+    "  plot_only = 100  \n",
+    "  low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])  \n",
+    "  labels = [reverse_dictionary[i] for i in xrange(plot_only)]  \n",
+    "  plot_with_labels(low_dim_embs, labels)  \n",
+    "  \n",
+    "except ImportError:  \n",
+    "  print('Please install sklearn, matplotlib, and scipy to show embeddings.')  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
