@@ -28,10 +28,10 @@ https://iampennywu.gitbooks.io/introducing-python/content/
 https://github.com/HuskyHsu/Introducing-Python
 
 ####Python with Tensorflow
-```
+
 1.Chatbot <https://github.com/jerrywu2013/Python/tree/master/2019/Chatbot>
 2.Chinese Visual understanding <https://github.com/jerrywu2013/Python/tree/master/2019/Chinese%20Visual%20understanding>
 3.MNIST <https://github.com/jerrywu2013/Python/tree/master/2019/MNIST>
 4.Sentiment analysis <https://github.com/jerrywu2013/Python/tree/master/2019/Sentiment%20analysis>
 5.Word2vec <https://github.com/jerrywu2013/Python/tree/master/2019/Word2vec>
-```
+
