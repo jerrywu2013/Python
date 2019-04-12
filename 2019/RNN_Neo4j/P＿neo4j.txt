@@ -1,0 +1,210 @@
+######CREATE
+CREATE (dept:Dept { deptno:10,dname:"Textile",location:"Taipei" })
+
+CREATE (emp:Employee {id:123,name:"Jerry",sal:35000,deptno:10})
+
+#####MATCH+RETURN
+MATCH (dept: Dept)
+RETURN dept.deptno,dept.dname
+
+
+#####CREATE+MATCH+RETURN
+CREATE (e:Customer{id:"1001",name:"Abc",dob:"01/10/1982"})
+MATCH (e:Customer)
+RETURN e.id,e.name,e.dob
+
+#####
+CREATE (google1:GooglePlusProfile)
+CREATE (m:Movie:Cinema:Film:Picture)
+CREATE (p1:Profile1)-[r1:LIKES]->(p2:Profile2)
+
+CREATE (cat:Cat{name:’Jerry'})-[:GROOMS]->(cat)
+MATCH (node) 
+RETURN node
+
+
+CREATE (joe:Bunny{name:'Joe'}), (sarah:Bunny{name:'Sarah'})
+MATCH (joe:Bunny{name:'Joe'}), (sarah:Bunny{name:'Sarah'})
+CREATE (joe)-[:LIKES]->(sarah), (joe)<-[:LIKES]-(sarah)
+RETURN joe,sarah
+
+查詢跟Movie有關係的節點
+match(x)--(m:Movie)  return x
+查詢有向關係的節點
+MATCH (:Person { name: 'Tom Hanks' })-->(movie) RETURN movie
+
+
+
+####WHERE
+MATCH (cust:Customer),(cc:CreditCard) 
+WHERE cust.id = "1001" AND cc.id= "5001" 
+CREATE (cust)-[r:DO_SHOPPING_WITH{shopdate:"12/12/2014",price:55000}]->(cc) 
+RETURN r
+
+MATCH (cust)-[r:DO_SHOPPING_WITH{shopdate:"12/12/2014",price:55000}]->(cc) 
+WHERE cust.id = "1001" AND cc.id= "5001" 
+RETURN cust.id,cc.id
+
+MATCH (movie:Movie) MATCH (director:Person)-[:DIRECTED]->(movie) MATCH (director)-[:ACTED_IN]->(movie) RETURN movie.title, director
+
+
+####DELETE
+
+CREATE (emp:Employee)
+MATCH (emp:Employee) DELETE emp
+
+
+
+
+####REMOVE
+CREATE (book:Book {id:122,title:"Neo4j 
+Tutorial",pages:340,price:250}) 
+
+MATCH (book : Book)
+RETURN book
+
+##測試使用DELETE刪除book.id
+MATCH (book : Book)
+DELETE book.id
+
+##測試使用REMOVE刪除book
+MATCH (book : Book) 
+REMOVE book.id
+
+#####SET
+
+CREATE (dc:DebitCard)
+MATCH (dc:DebitCard) RETURN dc
+MATCH (dc:DebitCard) SET dc.atm_pin = 3456  RETURN dc
+
+#####Sort
+MATCH (c:Movie) RETURN c.title
+MATCH (c:Movie) RETURN c.title ORDER BY c.title
+MATCH (c:Movie) RETURN c.title ORDER BY c.title DESC
+
+####UNION
+CREATE (cc:CreditCard{id:"5001",number:"1234567890",cvv:"888",expiredate:"20/17"})
+
+CREATE (dc:DebitCard{id:"5001",number:"1234567890",cvv:"888",expiredate:"20/17"})
+
+MATCH (dc:DebitCard) RETURN dc
+
+MATCH (cc:CreditCard)
+RETURN cc.id as id,cc.number as number,cc.name as name, cc.valid_from as valid_from,cc.valid_to as valid_to
+UNION
+MATCH (dc:DebitCard)
+RETURN dc.id as id,dc.number as number,dc.name as name,dc.valid_from as valid_from,dc.valid_to as valid_to
+
+####
+LIMIT&SKIP
+
+CREATE (emp:Employee {id:123,name:"Jerry",sal:35000,deptno:10})
+MATCH (emp:Employee)  RETURN emp
+MATCH (emp:Employee)  RETURN emp 
+LIMIT 2
+
+MATCH (emp:Employee)  RETURN emp
+MATCH (emp:Employee)  RETURN emp SKIP 2
+
+####
+MERGE
+
+CREATE (gp1:GoogleProfile1 {Id: 201401, Name:"Apple"}) 
+CREATE (gp1:GoogleProfile1 {Id: 201401, Name:"Apple"}) 
+
+MATCH  (gp1:GoogleProfile1)  
+RETURN gp1.Id,gp1.Name
+
+MERGE (gp2:GoogleProfile2{ Id: 201402,Name:”Nokia"})
+MERGE (gp2:GoogleProfile2{ Id: 201402,Name:”Nokia"})
+MATCH  (gp1:GoogleProfile1) 
+ RETURN gp1.Id,gp1.Name
+
+###
+MATCH (joe:Bunny{name:'Joe'}), (sarah:Bunny{name:'Sarah'})
+MERGE (joe)-[:LIKES]->(sarah)
+MERGE (joe)<-[:LIKES]-(sarah)
+MERGE (Jerry:fox:animal{name:'FOX'})-[:LIKES]->(sarah)
+RETURN joe,sarah,Jerry
+
+
+
+#Neo4j 進階
+MATCH (tom) RETURN (tom) LIMIT 1
+MATCH (tom{name:'Tom Hanks'}) RETURN (tom) LIMIT 1
+MATCH (tom:Person{name:'Tom Hanks', born:1956}) RETURN (tom) LIMIT 1
+
+MATCH (tom:Person) WHERE tom.name = 'Tom Hanks' AND tom.born = 1956 RETURN (tom) LIMIT 1
+MATCH (tom:Person{name:'Tom Hanks', born:1956}) RETURN (tom) LIMIT 1
+
+
+MATCH (someone:Person) WHERE someone.born > 1956 RETURN (someone) LIMIT 3
+
+MATCH (someone:Person) WHERE someone.born <> 1956 RETURN (someone) LIMIT 3
+
+
+MATCH (someone:Person) WHERE someone.name >= 'A'  RETURN (someone)
+MATCH (someone:Person) WHERE someone.name >= 'A' AND someone.name < 'C' RETURN (someone)
+
+
+找出特定區間的資料
+MATCH (someone:Person) WHERE someone.born = 1956 OR someone.born = 1957 OR someone.born = 1958 
+RETURN (someone)
+
+MATCH (someone:Person) WHERE someone.born IN [1956, 1957, 1958] 
+RETURN (someone)
+
+MATCH (someone:Person) WHERE NOT (someone.born >= 1950 AND someone.born < 1970) 
+RETURN (someone)
+
+哪些人跟這部電影有關
+MATCH (person:Person)-->(movie:Movie) WHERE movie.title = 'The Matrix' 
+RETURN person
+
+去除導演資料
+MATCH (person:Person)-->(movie:Movie) WHERE movie.title = 'The Matrix' AND NOT (person)-[:DIRECTED]->(movie) 
+RETURN person 
+
+呈現人、電影
+MATCH (person:Person)-->(movie:Movie) WHERE movie.title = 'The Matrix' AND NOT (person)-[:DIRECTED]->(movie) RETURN person, movie
+
+#模糊搜尋
+MATCH (movie:Movie) WHERE movie.title =~ 'The.*' RETURN movie.title
+前後模糊
+MATCH (movie:Movie) WHERE movie.title =~ '.*The.*' RETURN movie.title
+小空格匹配
+MATCH (movie:Movie) WHERE movie.title =~ ‘.*The .*' RETURN movie.title
+
+小寫
+MATCH (movie:Movie) WHERE movie.title =~ '(?i).*The .*' RETURN movie.title
+
+指定效果
+MATCH (movie:Movie) WHERE movie.title =~ '(?i).+The .*' RETURN movie.title
+
+
+觀察這部電影的演員
+MATCH (actor:Person)-[role:ACTED_IN]->(movie:Movie) WHERE movie.title = 'Top Gun' RETURN actor, role, movie
+
+特別將演員資料與收益取出
+MATCH (actor:Person)-[role:ACTED_IN]->(movie:Movie) WHERE movie.title = 'Top Gun' RETURN actor.name, role.earnings
+
+收益排序
+MATCH (actor:Person)-[role:ACTED_IN]->(movie:Movie) WHERE movie.title = 'Top Gun' RETURN actor.name, role.earnings ORDER BY role.earnings DESC
+
+觀察後三名
+MATCH (actor:Person)-[role:ACTED_IN]->(movie:Movie) WHERE movie.title = 'Top Gun' RETURN actor.name, role.earnings ORDER BY role.earnings DESC SKIP 3
+
+觀察前三名
+MATCH (actor:Person)-[role:ACTED_IN]->(movie:Movie) WHERE movie.title = 'Top Gun' RETURN actor.name, role.earnings ORDER BY role.earnings DESC LIMIT 3
+
+
+#####DISTINCT
+MATCH (actor:Person)-[role:ACTED_IN]->(:Movie) WHERE role.earnings > 10000000 RETURN DISTINCT actor.name
+
+
+##### Aggregation
+MATCH (tom:Person{name:'Tom Hanks'})-[:ACTED_IN]->(movie:Movie) RETURN COUNT(movie)
+MATCH (tom:Person{name:'Tom Hanks'})-[role:ACTED_IN]->(movie:Movie) RETURN SUM (role.earnings)
+MATCH (tom:Person{name:'Tom Hanks'})-[role:ACTED_IN]->(movie:Movie) RETURN AVG (role.earnings)
+MATCH (tom:Person{name:'Tom Hanks'})-[role:ACTED_IN]->(movie:Movie) RETURN AVG (role.earnings), MAX (role.earnings)
+
