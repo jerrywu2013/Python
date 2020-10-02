@@ -1,4 +1,4 @@
-Python tutorial in ubuntu
+Python tutorial and github link in ubuntu
 ==========
 ####Installation and quick start
 Win: http://continuum.io/downloads#py34
