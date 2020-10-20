@@ -22,12 +22,12 @@ pip install --upgrade ipython[notebook]
 
 ```
 
-#### Reference
+#### Reference.
 https://iampennywu.gitbooks.io/introducing-python/content/
 
 https://github.com/HuskyHsu/Introducing-Python
 
-####Python with Tensorflow
+####Python with Tensorflow.
 
 1.CNN_for_textile <https://github.com/jerrywu2013/Python/tree/master/2019/CNN_for_textile>
 
